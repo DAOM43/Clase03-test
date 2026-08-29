@@ -1,0 +1,160 @@
+import { test, expect } from '@playwright/test';
+import { LoginPage } from '../pages/LoginPage';
+import { InventoryPage } from '../pages/InventoryPage';
+import { CartPage } from '../pages/CartPage';
+import { CheckoutPage } from '../pages/CheckoutPage';
+import { MenuPage } from '../pages/MenuPage';
+
+test.describe('Clase 06 - Page Object Model en Sauce Demo', () => {
+
+  test.afterEach(async ({ page }, testInfo) => {
+    const testName = testInfo.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-');
+
+    await page.screenshot({
+      path: `evidencias-clase06/${testName}.png`,
+      fullPage: true,
+    });
+  });
+
+  test('Login exitoso con POM', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+
+    await loginPage.navigate();
+    await loginPage.login('standard_user', 'secret_sauce');
+
+    const inventoryPage = new InventoryPage(page);
+    await inventoryPage.expectToBeOnInventoryPage();
+
+    console.log('Login con POM exitoso');
+  });
+
+  test('Login fallido con POM', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+
+    await loginPage.navigate();
+    await loginPage.login('wrong_user', 'wrong_pass');
+
+    await loginPage.expectLoginError('Username and password do not match');
+
+    console.log('Error de login capturado con POM');
+  });
+
+  test('Flujo completo: login -> agregar 2 productos -> verificar carrito', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+    const cartPage = new CartPage(page);
+
+    // Login
+    await loginPage.navigate();
+    await loginPage.login('standard_user', 'secret_sauce');
+    await inventoryPage.expectToBeOnInventoryPage();
+
+    // Agregar productos por nombre
+    await inventoryPage.addProductByName('Sauce Labs Backpack');
+    await inventoryPage.addProductByName('Sauce Labs Bike Light');
+
+    // Verificar badge del carrito
+    await expect(inventoryPage.cartBadge).toHaveText('2');
+
+    // Ir al carrito
+    await inventoryPage.goToCart();
+    await cartPage.expectItemCount(2);
+
+    console.log('Flujo completo con POM: 2 productos en carrito');
+  });
+
+  test('Verificar que el inventario tiene 6 productos', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+
+    await loginPage.navigate();
+    await loginPage.login('standard_user', 'secret_sauce');
+
+    const count = await inventoryPage.getProductCount();
+    expect(count).toBe(6);
+  });
+
+  test('Ordenar productos de mayor a menor precio', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+
+    await loginPage.navigate();
+    await loginPage.login('standard_user', 'secret_sauce');
+
+    // Ordenar de mayor a menor precio
+    await inventoryPage.sortBy('hilo');
+
+    const precios = page.locator('.inventory_item_price');
+    const primerPrecio = await precios.first().textContent();
+
+    // Los precios deben estar en orden descendente
+    const todosLosPrecios = await precios.allTextContents();
+    const numericos = todosLosPrecios.map(p => parseFloat(p.replace('$', '')));
+    for (let i = 0; i < numericos.length - 1; i++) {
+      expect(numericos[i]).toBeGreaterThanOrEqual(numericos[i + 1]);
+    }
+  });
+
+  // RETO 1 
+  test('Reto 1: Completar una compra de principio a fin', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+    const cartPage = new CartPage(page);
+    const checkoutPage = new CheckoutPage(page);
+
+    await loginPage.navigate();
+    await loginPage.login('standard_user', 'secret_sauce');
+    await inventoryPage.expectToBeOnInventoryPage();
+
+    await inventoryPage.addProductByName('Sauce Labs Backpack');
+    await inventoryPage.goToCart();
+    await cartPage.expectItemCount(1);
+
+    await cartPage.proceedToCheckout();
+    await checkoutPage.fillInformation('Ana', 'García', '01001');
+    await checkoutPage.expectToBeOnStepTwo();
+
+    await checkoutPage.finishCheckout();
+    await checkoutPage.expectOrderComplete();
+
+    console.log('Reto 1: compra completada con POM');
+  });
+
+  // RETO 2
+  test('Reto 2: Logout desde el menú hamburguesa', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+    const menuPage = new MenuPage(page);
+
+    await loginPage.navigate();
+    await loginPage.login('standard_user', 'secret_sauce');
+    await inventoryPage.expectToBeOnInventoryPage();
+
+    await menuPage.logout();
+    await menuPage.expectToBeOnLoginPage();
+
+    console.log('Reto 2: logout con POM exitoso');
+  });
+
+  // RETO 3 
+  test('Reto 3: Quitar producto del carrito y verificar que el badge desaparece', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    const inventoryPage = new InventoryPage(page);
+
+    await loginPage.navigate();
+    await loginPage.login('standard_user', 'secret_sauce');
+    await inventoryPage.expectToBeOnInventoryPage();
+
+    await inventoryPage.addProductByName('Sauce Labs Backpack');
+    await expect(inventoryPage.cartBadge).toHaveText('1');
+
+    await inventoryPage.removeProductByName('Sauce Labs Backpack');
+    await expect(inventoryPage.cartBadge).not.toBeVisible();
+
+    console.log('Reto 3: producto removido, badge del carrito desaparece en 0');
+  });
+
+});
