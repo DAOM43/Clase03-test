@@ -4,10 +4,8 @@ import { InventoryPage } from '../pages/InventoryPage';
 
 test.describe('Tarea 07 - Evidencias avanzadas', () => {
 
-    // ─────────────────────────────────────────────────────────────
     // RETO 1 — test.step()
-    // Cada paso aparece por separado en el reporte HTML y en el trace.
-    // ─────────────────────────────────────────────────────────────
+
     test('Reto 1 - Flujo de login estructurado en pasos nombrados', async ({ page }) => {
         const loginPage = new LoginPage(page);
         const inventoryPage = new InventoryPage(page);
@@ -34,23 +32,16 @@ test.describe('Tarea 07 - Evidencias avanzadas', () => {
         console.log('Reto 1: test estructurado en 3 pasos nombrados');
     });
 
-    // ─────────────────────────────────────────────────────────────
     // RETO 2 — testInfo.attach()
-    // Adjunta un .txt (y un .png) directamente al reporte HTML.
-    // Se accede al segundo parametro del callback: ({ page }, testInfo)
-    // ─────────────────────────────────────────────────────────────
+
     test('Reto 2 - Adjuntar datos capturados al reporte HTML', async ({ page }, testInfo) => {
         const loginPage = new LoginPage(page);
         await loginPage.navigate();
         await loginPage.login('standard_user', 'secret_sauce');
         await expect(page).toHaveURL(/inventory/);
 
-        // Espera explicita a que el inventario ya este renderizado
-        // antes de contar - evita el flaky (count() no hace auto-wait,
-        // a diferencia de toBeVisible() que reintenta hasta 5s)
         await expect(page.locator('.inventory_item').first()).toBeVisible();
 
-        // Datos capturados en vivo desde la pagina
         const cantidadProductos = await page.locator('.inventory_item').count();
         const urlActual = page.url();
         const fecha = new Date().toLocaleString('es-GT');
@@ -66,13 +57,11 @@ test.describe('Tarea 07 - Evidencias avanzadas', () => {
             `Test           : ${testInfo.title}`,
         ].join('\n');
 
-        // Adjunto 1: archivo de texto con los datos capturados
         await testInfo.attach('datos-capturados.txt', {
             body: contenido,
             contentType: 'text/plain',
         });
 
-        // Adjunto 2: screenshot en memoria (sin guardarlo en disco)
         await testInfo.attach('inventario.png', {
             body: await page.screenshot({ fullPage: true }),
             contentType: 'image/png',
@@ -82,18 +71,12 @@ test.describe('Tarea 07 - Evidencias avanzadas', () => {
         console.log(`Reto 2: ${cantidadProductos} productos adjuntados al reporte`);
     });
 
-    // ─────────────────────────────────────────────────────────────
     // RETO 3 — toHaveScreenshot()
-    // Comparacion visual contra un baseline.
-    // La PRIMERA corrida crea el baseline y el test FALLA (es normal).
-    // La segunda corrida ya compara y pasa. Los .png del baseline
-    // se guardan en tests/tarea07.spec.ts-snapshots/ y van al repo.
-    // ─────────────────────────────────────────────────────────────
+
     test('Reto 3 - Comparacion visual contra baseline', async ({ page }) => {
         const loginPage = new LoginPage(page);
         await loginPage.navigate();
 
-        // Baseline 1: pantalla de login completa
         await expect(page).toHaveScreenshot('login-baseline.png', {
             fullPage: true,
             maxDiffPixelRatio: 0.02,   // tolerancia a diferencias minimas de render
@@ -102,10 +85,34 @@ test.describe('Tarea 07 - Evidencias avanzadas', () => {
         await loginPage.login('standard_user', 'secret_sauce');
         await expect(page).toHaveURL(/inventory/);
 
-        // Baseline 2: solo el header del inventario (zona visualmente estable)
         await expect(page.locator('.primary_header')).toHaveScreenshot('header-inventario.png');
 
         console.log('Reto 3: comparacion visual completada contra el baseline');
     });
+test('Todos los productos tienen imagen visible', async ({ page }) => {
+    const imagenes = page.locator('.inventory_item img');
+    const cantidad = await imagenes.count();
 
+    for (let i = 0; i < cantidad; i++) {
+      await expect(imagenes.nth(i)).toBeVisible();
+      const src = await imagenes.nth(i).getAttribute('src');
+      expect(src).not.toBeNull();
+    }
+    console.log(`${cantidad} imágenes verificadas`);
+  });
+  test('El menú de hamburguesa funciona', async ({ page }) => {
+    // Abrir menú
+    await page.locator('#react-burger-menu-btn').click();
+    await page.waitForSelector('.bm-menu', { state: 'visible' });
+
+    // Verificar opciones del menú
+    await expect(page.getByText('All Items')).toBeVisible();
+    await expect(page.getByText('About')).toBeVisible();
+    await expect(page.getByText('Logout')).toBeVisible();
+    await expect(page.getByText('Reset App State')).toBeVisible();
+
+    // Cerrar menú
+    await page.locator('#react-burger-cross-btn').click();
+    await page.waitForSelector('.bm-menu', { state: 'hidden' });
+  });
 });
