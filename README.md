@@ -19,18 +19,36 @@ Podríamos guardar los datos en un archivo separado (por ejemplo, en una carpeta
 
 # Reflexión y discusión - Clase 10
 
-### 1. ¿Algún test se comportó diferente en WebKit (Safari) vs. Chrome? ¿Por qué podría ocurrir esto?**
+### 1. ¿Algún test se comportó diferente en WebKit (Safari) vs. Chrome? ¿Por qué podría ocurrir esto?
 
 Aunque en mi caso todas las pruebas pasaron igual en los diferentes navegadores, es común encontrar discrepancias. Esto pasa porque Chrome usa Blink y Safari usa WebKit, motores que interpretan el código (CSS, JavaScript y diseño) de forma distinta. Probar en Safari es vital porque nos ayuda a detectar bugs visuales o de comportamiento que afectan directamente a una gran parte de los usuarios reales.
 
 ---
 
-### 2. ¿Cuántos tests se ejecutaron en total con la configuración multi-browser de 5 projects?**
+### 2. ¿Cuántos tests se ejecutaron en total con la configuración multi-browser de 5 projects?
 
 Se corrieron 80 tests en total. La cuenta sale de multiplicar las pruebas principales de smoke y regresión (10 en total) por los 5 projects (dando 50), más los 6 tests de la tarea 10 también multiplicados por los 5 proyectos (otros 30).
 
 ---
 
-### 3. ¿Por qué el smoke testing debería ejecutarse antes del regression testing en un pipeline de CI/CD?**
+### 3. ¿Por qué el smoke testing debería ejecutarse antes del regression testing en un pipeline de CI/CD?
 
 El smoke test se ejecuta primero porque valida lo más crítico y básico del sistema (como que la plataforma cargue o permita iniciar sesión). Si esa base falla, se frena el pipeline de inmediato: así evitamos perder tiempo y recursos corriendo una suite de regresión completa que de entrada ya sabemos que va a fallar.
+
+# Reflexión y discusión - Clase 11
+
+### 1. ¿Qué severidad y qué prioridad le asignaste al defecto de las imágenes rotas?
+
+Severidad Media, porque aunque parte del contenido visual no se carga, la página sigue siendo funcional y no se pierde ningún tipo de información. Prioridad P3, porque es un detalle visual que resulta molesto, pero el producto puede salir así a producción y el arreglo se puede programar para el siguiente sprint.
+
+---
+
+### 2. Con test.fail() el test cuenta como pasado. ¿Qué ventaja y qué riesgo tiene dejar un defecto conocido en verde?
+
+La ventaja es que la suite de pruebas se mantiene en verde mientras el bug está documentado, evitando que el equipo se acostumbre a ver fallos en rojo y facilitando la detección de nuevos errores. Además, cuando el problema se corrija en el código, el test fallará para avisar que ya se debe quitar el test.fail(). El riesgo es que genera una falsa sensación de calidad: el defecto queda oculto, puede olvidarse sin corregirse y los reportes de éxito terminan dando una idea equivocada del estado real del producto.
+
+---
+
+### 3. Si un test falla por una conexión que no responde, ¿es un defecto del producto? ¿Qué harías antes de reportarlo?
+
+No necesariamente, ya que puede ser un fallo temporal del ambiente de pruebas o de la red. Antes de reportarlo, repetiría el test para descartar que sea intermitente, revisaría el tráfico en la pestaña Network de las herramientas de desarrollo y probaría el flujo manualmente en otro navegador. Si el test pasa al reintentar, lo tomo como un problema del ambiente y no lo reporto. Solo lo registraría como bug si se repite de forma consistente con el mismo Expected y Received.
